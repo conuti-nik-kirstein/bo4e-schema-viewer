@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BO4E-Schema-Viewer</title>
+<script>(()=>{try{if(localStorage.getItem('theme')==='shark')document.documentElement.dataset.theme='shark'}catch{}})()</script>
+<style>
+:root{
+  --bg:#eef1f0;--panel:#fff;--text:#0e1514;--muted:#4b5654;--line:#b9c3c0;--line-strong:#7d8a87;--grid:#dde3e1;
+  --accent:#155e57;--accent-ink:#fff;--th:#dfe5e3;--composite:#f2f4f3;--warn:#b54708;--ok:#027a48;--focus:#4b3a8f;
+  --flash:#fff0a8;--mark:#ffe27a;
+  --k-bo:#155e57;--k-com:#3b5bdb;--k-enum:#9c36b5;--k-cdoc:#b54708;
+  --j-key:#155e57;--j-str:#9a3412;--j-num:#1d4ed8;--j-lit:#9c36b5;
+  color-scheme:light;
+}
+:root[data-theme="shark"]{color-scheme:dark;
+  --bg:#0a1622;--panel:#0f1e2c;--text:#e9f1f8;--muted:#a7bccd;--line:#2b4054;--line-strong:#5b7690;--grid:#18293a;
+  --accent:#5cc8f0;--accent-ink:#06121c;--th:#162a3c;--composite:#132536;--warn:#ffab5c;--ok:#4fd69a;--focus:#a6c8ff;
+  --flash:#3a3a12;--mark:#5c5214;
+  --k-bo:#4fd6c0;--k-com:#8aa8ff;--k-enum:#e19bff;--k-cdoc:#ffab5c;
+  --j-key:#5cc8f0;--j-str:#ffb38a;--j-num:#a6c8ff;--j-lit:#e19bff;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+a{color:var(--accent)}
+code,.mono{font-family:ui-monospace,Consolas,monospace}
+header{position:relative;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+header h1{font-size:15px;margin:0 8px 0 0;color:var(--accent);white-space:nowrap}
+header .logo{height:30px;width:auto;display:block;margin-right:-4px}
+:root[data-theme="shark"] header .logo{filter:invert(1)}
+select,input,button{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px}
+button{cursor:pointer}button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.spacer{margin-left:auto}
+.srcinfo{font-size:12px;color:var(--muted)}
+.srcinfo b{color:var(--text)}
+.srcinfo.warn{color:var(--warn)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:4px 10px;background:var(--panel)}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.theme-btn{font-size:18px;line-height:1;padding:3px 8px;border-radius:999px;height:30px;min-width:38px}
+/* globale Suche */
+.gsw{position:relative;flex:1 1 320px;max-width:520px}
+#gs{width:100%;padding:5px 10px}
+#gsr{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);display:none}
+#gsr.show{display:block}
+#gsr .grp{position:sticky;top:0;background:var(--th);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-bottom:1px solid var(--line)}
+#gsr .r{padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--grid);display:flex;gap:8px;align-items:baseline}
+#gsr .r .sub{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;text-align:right}
+#gsr .r.on,#gsr .r:hover{background:var(--composite)}
+#gsr .r.on{outline:2px solid var(--accent);outline-offset:-2px}
+#gsr .more,#gsr .none{padding:5px 10px;color:var(--muted);font-size:12px}
+mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
+/* Layout */
+main{flex:1;display:flex;min-height:0}
+aside{width:290px;min-width:220px;border-right:1px solid var(--line-strong);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+aside .tools{padding:8px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--line)}
+aside .list{overflow:auto;flex:1}
+.hint{color:var(--muted);font-size:12px}
+.kind{position:sticky;top:0;background:var(--th);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-bottom:1px solid var(--line);z-index:1}
+.item{padding:4px 10px 4px 14px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--grid);text-decoration:none;color:inherit}
+.item:hover{background:var(--composite)}
+.item.on{background:var(--accent);color:var(--accent-ink)}
+.item .c{font-size:11px;color:var(--muted)}
+.item.on .c{color:inherit;opacity:.8}
+section#detail{flex:1;overflow:auto;padding:16px 20px 40px;min-width:0}
+h2{margin:0 0 2px;font-size:19px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+h2 .alt{font-size:13px;font-weight:400;color:var(--muted)}
+.sub{color:var(--muted);margin-bottom:8px}
+.desc{max-width:1000px;margin:6px 0 12px;white-space:pre-line}
+.tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border:1px solid currentColor;border-radius:4px;padding:0 4px;line-height:15px;vertical-align:1px}
+.k-bo{color:var(--k-bo)}.k-com{color:var(--k-com)}.k-enum{color:var(--k-enum)}.k-cdoc{color:var(--k-cdoc)}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--line-strong);margin:12px 0 10px;max-width:1400px}
+.tabs a{padding:6px 14px;text-decoration:none;color:var(--muted);border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;margin-bottom:-2px}
+.tabs a:hover{color:var(--text)}
+.tabs a.on{color:var(--text);background:var(--panel);border-color:var(--line-strong);border-bottom:2px solid var(--panel);font-weight:600}
+.tabs a.dis{opacity:.45;pointer-events:none}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;max-width:1400px}
+.bar input[type=search]{min-width:260px}
+table{border-collapse:separate;border-spacing:0;width:100%;max-width:1400px;background:var(--panel);border:1px solid var(--line-strong)}
+th{background:var(--th);text-align:left;font-size:12px;padding:6px 8px;border-bottom:2px solid var(--line-strong);border-right:1px solid var(--line);position:sticky;top:-16px;z-index:2}
+td{padding:4px 8px;border-bottom:1px solid var(--line);border-right:1px solid var(--grid);vertical-align:top}
+tbody tr:hover td{background:var(--composite)}
+tr.d1 td{background:color-mix(in srgb,var(--k-com) 4%,var(--panel))}
+tr.d2 td{background:color-mix(in srgb,var(--k-com) 8%,var(--panel))}
+tr.d3 td,tr.d4 td,tr.d5 td,tr.d6 td,tr.d7 td,tr.d8 td{background:color-mix(in srgb,var(--k-com) 12%,var(--panel))}
+tr.flash td{animation:fl 2.4s ease-out}
+@keyframes fl{0%,40%{background:var(--flash)}}
+tr.ctx td{color:var(--muted)}
+td.n{font-family:ui-monospace,Consolas,monospace;font-weight:600;white-space:nowrap}
+td.n .alt,td.v .alt{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.tg{display:inline-block;width:18px;height:18px;line-height:16px;text-align:center;padding:0;margin-right:4px;border-radius:4px;font-size:11px;vertical-align:0}
+.tgs{display:inline-block;width:22px}
+td.t{white-space:nowrap}
+td.l,td.r{text-align:center;white-space:nowrap}
+td.a{white-space:nowrap;text-align:right;width:1%}
+td.a button{font-size:12px;padding:1px 6px}
+.ev{white-space:normal;max-width:360px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--muted);margin-top:2px}
+.chip{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin:2px 4px 0 0;color:var(--muted);background:var(--composite);font-family:ui-monospace,Consolas,monospace}
+.miss{color:var(--warn);font-weight:600}
+.cyc{color:var(--muted);font-size:11px;margin-left:4px}
+td.v{font-family:ui-monospace,Consolas,monospace;font-weight:600}
+pre.json{background:var(--panel);border:1px solid var(--line-strong);border-radius:6px;padding:12px 14px;max-width:1400px;overflow:auto;font:12px/1.5 ui-monospace,Consolas,monospace;margin:0;white-space:pre}
+.j-k{color:var(--j-key)}.j-s{color:var(--j-str)}.j-n{color:var(--j-num)}.j-l{color:var(--j-lit)}
+.used{max-width:1400px}
+.used h3{font-size:13px;margin:14px 0 6px}
+.used ul{margin:0;padding-left:18px}
+.used li{margin:2px 0}
+.empty{color:var(--muted);padding:30px 0}
+.ov{max-width:1100px}
+.cards{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.card{background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;padding:10px 16px;min-width:130px}
+.card b{display:block;font-size:22px}
+.ov table{max-width:1100px}
+.ov li{margin:3px 0}
+kbd{font:11px ui-monospace,Consolas,monospace;border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel)}
+#toast{position:fixed;right:16px;bottom:16px;background:var(--text);color:var(--bg);padding:8px 12px;border-radius:8px;opacity:0;transition:opacity .2s;max-width:520px;pointer-events:none;z-index:50}
+#toast.show{opacity:.95}
+@media (max-width:760px){main{flex-direction:column}aside{width:auto;max-height:38vh;border-right:0;border-bottom:1px solid var(--line-strong)}section#detail{padding:12px 16px}}
+</style>
+</head>
+<body>
+<header>
+  <a href="#" title="Übersicht"><img class="logo" src="__LOGO__" alt="CONUTI"></a>
+  <h1>BO4E-Schema-Viewer</h1>
+  <div class="gsw">
+    <input id="gs" type="search" placeholder="Suchen: Objekt, Feld, Enum-Wert, Beschreibung …  ( / )" autocomplete="off" spellcheck="false">
+    <div id="gsr"></div>
+  </div>
+  <span class="spacer"></span>
+  <span id="src" class="srcinfo"></span>
+  <span class="seg" title="Bezeichner aus translation/v1/DE_to_EN.yaml"><button id="lDE" type="button">DE</button><button id="lEN" type="button">EN</button></span>
+  <button id="themeBtn" class="theme-btn" type="button"></button>
+</header>
+<main>
+  <aside>
+    <div class="tools">
+      <input id="q" type="search" placeholder="Objekt filtern …" autocomplete="off">
+      <select id="flt"><option value="">alle Arten</option><option value="bo">BO – Business-Objekte</option><option value="com">COM – Komponenten</option><option value="enum">ENUM – Aufzählungen</option><option value="cdoc">CDOC – Container</option></select>
+      <span class="hint" id="cnt"></span>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+  <section id="detail"></section>
+</main>
+<div id="toast"></div>
+<script>
+const D=/*__DATA__*/null;
+const O=D.objects, TR=D.tr||{}, KINDS=['bo','com','enum','cdoc'];
+const KL={bo:'BO – Business-Objekte',com:'COM – Komponenten',enum:'ENUM – Aufzählungen',cdoc:'CDOC – Container'};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LS={get(k,d){try{return localStorage.getItem(k)??d}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+let LANG=LS.get('bo4e-viewer-lang','de')==='en'?'en':'de';
+const tr=s=>TR[s]||s;
+const lab=s=>LANG==='en'?tr(s):s;                               // Klartext in aktueller Sprache
+function nm(s,hl){const p=lab(s),o=LANG==='en'?s:tr(s);          // HTML: Name + Alternative
+  return `<span title="${o!==p?(LANG==='en'?'DE: ':'EN: ')+esc(o):''}">${mk(p,hl)}</span>`}
+function nmAlt(s,hl){const p=lab(s),o=LANG==='en'?s:tr(s);return mk(p,hl)+(o!==p?`<span class="alt">${mk(o,hl)}</span>`:'')}
+function mk(text,q){const t=esc(text);if(!q)return t;const i=String(text).toLowerCase().indexOf(q);if(i<0)return t;
+  const s=String(text);return esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+q.length))+'</mark>'+esc(s.slice(i+q.length))}
+const kindOf=k=>k.split('/')[0], nameOf=k=>k.split('/')[1];
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2600)}
+async function copy(t){try{await navigator.clipboard.writeText(t)}catch{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch{}a.remove()}toast('Kopiert: '+t)}
+const hasKids=k=>O[k]&&O[k].p&&O[k].p.length>0;
+
+// ---------- Rückverweise ----------
+const USED={};
+for(const [k,o] of Object.entries(O))for(const p of o.p||[]){const r=p.t.ref;if(r)(USED[r]=USED[r]||[]).push({from:k,field:p.n,arr:!!p.t.arr})}
+function indirectBO(target){ // BFS rückwärts bis zu BO/CDOC, mit Beispielpfad
+  const seen=new Map([[target,null]]),q=[target],res=[];
+  while(q.length){const cur=q.shift();for(const u of USED[cur]||[]){if(seen.has(u.from))continue;seen.set(u.from,{via:cur,field:u.field,arr:u.arr});q.push(u.from);
+      if(kindOf(u.from)==='bo'&&!(USED[target]||[]).some(x=>x.from===u.from))res.push({bo:u.from,path:fwdPath(u.from,target,seen)})}}
+  return res.sort((a,b)=>a.bo.localeCompare(b.bo));
+}
+function fwdPath(from,target,seen){ // Kette from -> ... -> target aus seen (seen[x] = {via: child-Richtung target})
+  const parts=[];let c=from,guard=0;while(c!==target&&guard++<20){const s=seen.get(c);if(!s)break;parts.push(s.field);c=s.via}return parts.join('.')}
+
+// ---------- Quelle ----------
+function fmtDate(s){if(!s)return'';const d=new Date(s);return isNaN(d)?s:d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}
+(function(){const s=D.src,e=$('#src');
+  if(s.art==='lokal'){e.innerHTML=`Schema: <b>lokale Kopie</b> · erzeugt ${fmtDate(s.built_at)}`;e.title=s.pfad+(s.hinweis?'\n'+s.hinweis:'')}
+  else{e.innerHTML=`Schema: <b>${esc(s.repo)}@${esc(s.ref)}</b> · <span class="mono">${esc(s.sha.slice(0,7))}</span> vom ${fmtDate(s.commit_date)}`;
+    e.title=`Commit: ${s.sha}\n${s.commit_message}\nGeladen: ${fmtDate(s.fetched_at)}\nViewer erzeugt: ${fmtDate(s.built_at)}`+(s.hinweis?'\n'+s.hinweis:'')}
+  if(s.hinweis)e.classList.add('warn'),e.innerHTML+=' · ⚠ '+(s.art==='cache'?'Cache-Stand':'GitHub nicht erreichbar');})();
+
+// ---------- Sprache / Design ----------
+function setLang(l){LANG=l;LS.set('bo4e-viewer-lang',l);$('#lDE').classList.toggle('on',l==='de');$('#lEN').classList.toggle('on',l==='en');renderList();route();if($('#gs').value)gsearch()}
+$('#lDE').onclick=()=>setLang('de');$('#lEN').onclick=()=>setLang('en');
+function theme(t){if(t)document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme;const s=t==='shark',b=$('#themeBtn');
+  b.textContent=s?'🦈':'🌞';b.title=s?'Shark Mode aktiv – zum hellen Design wechseln':'Helles Design aktiv – zum Shark Mode wechseln';b.setAttribute('aria-label',b.title)}
+$('#themeBtn').onclick=()=>{const t=document.documentElement.dataset.theme==='shark'?'':'shark';LS.set('theme',t?'shark':'light');theme(t)};
+theme(document.documentElement.dataset.theme==='shark'?'shark':'');
+
+// ---------- Liste links ----------
+function renderList(){
+  const q=$('#q').value.trim().toLowerCase(),f=$('#flt').value;let h='',n=0;
+  for(const k of KINDS){if(f&&f!==k)continue;
+    const items=Object.values(O).filter(o=>o.k===k&&(!q||o.n.toLowerCase().includes(q)||tr(o.n).toLowerCase().includes(q)))
+      .sort((a,b)=>lab(a.n).localeCompare(lab(b.n),'de'));
+    if(!items.length)continue;
+    h+=`<div class="kind">${KL[k]} (${items.length})</div>`;
+    for(const o of items){n++;const key=o.k+'/'+o.n,c=o.v?o.v.length:(o.p?o.p.length:0);
+      h+=`<a class="item${CUR===key?' on':''}" href="#${esc(key)}" data-k="${esc(key)}"><span>${nm(o.n,q)}</span><span class="c">${c}</span></a>`}}
+  $('#list').innerHTML=h||'<div class="empty" style="padding:20px">Keine Treffer</div>';
+  $('#cnt').textContent=`${n} von ${Object.keys(O).length} Objekten`;
+  const on=$('#list .item.on');if(on)on.scrollIntoView({block:'nearest'});
+}
+$('#q').oninput=renderList;$('#flt').onchange=renderList;
+
+// ---------- Typ-Darstellung ----------
+function refLink(r){if(!O[r])return `<span class="tag k-${kindOf(r)}">${kindOf(r)}</span> <span class="miss" title="Datei ${esc(r)}.schema.json fehlt im Schema">${esc(nameOf(r))} (fehlt)</span>`;
+  return `<span class="tag k-${kindOf(r)}">${kindOf(r)}</span> <a href="#${esc(r)}">${nm(nameOf(r))}</a>`}
+function enumPreview(vals,q){if(!vals)return'';const max=8;
+  return `<div class="ev" title="${esc(vals.map(lab).join(', '))}">${vals.slice(0,max).map(v=>mk(lab(v),q)).join(' · ')}${vals.length>max?` · +${vals.length-max}`:''}</div>`}
+function typeHtml(t,q){
+  let h;if(t.ref)h=refLink(t.ref);else h=`<span class="mono">${esc(t.b)}</span>`+(t.f?` <span class="hint">(${esc(t.f)})</span>`:'')+(t.raw?` <span class="miss" title="${esc(t.raw)}">$ref?</span>`:'');
+  if(t.null)h+=' <span class="hint" title="darf null sein">∅</span>';
+  if(t.ref&&O[t.ref]&&O[t.ref].v)h+=enumPreview(O[t.ref].v,q);
+  if(t.e)h+=enumPreview(t.e,q);
+  return h}
+
+// ---------- Baum ----------
+const EXPS={};const MAXD=10,LIMIT=40000;let FAKER=LS.get('bo4e-viewer-faker','')==='1';
+const expOf=k=>EXPS[k]||(EXPS[k]=new Set());
+function buildRows(key){ // sichtbare Zeilen gemäß Aufklappzustand
+  const exp=expOf(key),out=[];
+  (function rec(k,prefix,cprefix,anc,depth){for(const p of O[k].p){
+    const path=prefix?prefix+'.'+p.n:p.n,cp=cprefix?cprefix+'.'+lab(p.n):lab(p.n),r=p.t.ref;
+    const cyc=!!(r&&anc.includes(r)),can=!!(r&&hasKids(r)&&!cyc),open=can&&exp.has(path);
+    out.push({p,path,cp,depth,can,cyc,open});
+    if(open)rec(r,path,cp+(p.t.arr?'[]':''),[...anc,r],depth+1)}})(key,'','',[key],0);
+  return out}
+function matchProp(p,q){if(!q)return false;const L=s=>String(s||'').toLowerCase();
+  if(L(p.n).includes(q)||L(tr(p.n)).includes(q)||L(p.d).includes(q)||L(p.c).includes(q))return true;
+  const r=p.t.ref;if(r&&O[r]&&O[r].v&&O[r].v.some(v=>L(v).includes(q)||L(tr(v)).includes(q)))return true;
+  if(p.t.e&&p.t.e.some(v=>L(v).includes(q)))return true;
+  if(r&&L(nameOf(r)).includes(q))return true;return false}
+function filterRows(key,q){ // alle Treffer bis Tiefe MAXD inkl. Vorfahren
+  const all=[];let n=0,cut=false;
+  (function rec(k,prefix,cprefix,anc,depth,parentIdx){for(const p of O[k].p){if(++n>LIMIT){cut=true;return}
+    const path=prefix?prefix+'.'+p.n:p.n,cp=cprefix?cprefix+'.'+lab(p.n):lab(p.n),r=p.t.ref;
+    const cyc=!!(r&&anc.includes(r)),can=!!(r&&hasKids(r)&&!cyc);
+    const node={p,path,cp,depth,can,cyc,parent:parentIdx,hit:matchProp(p,q),keep:false};const idx=all.push(node)-1;
+    if(can&&depth<MAXD)rec(r,path,cp+(p.t.arr?'[]':''),[...anc,r],depth+1,idx)}})(key,'','',[key],0,-1);
+  for(const nd of all)if(nd.hit){let i=all.indexOf(nd);while(i>=0&&!all[i].keep){all[i].keep=true;i=all[i].parent}}
+  const out=all.filter(x=>x.keep);for(const x of out){x.open=x.can&&out.some(y=>y.parent>=0&&all[y.parent]===x);x.ctx=!x.hit}
+  return {rows:out,cut,hits:out.filter(x=>x.hit).length}}
+
+// ---------- Routing ----------
+let CUR=null,TAB='struktur',SF='',RENDERED_KEY=null;
+function parseHash(){const h=location.hash.slice(1),i=h.indexOf('?');const path=decodeURIComponent(i<0?h:h.slice(0,i)),qs=i<0?'':h.slice(i+1);const parts=(path||'').split('/');
+  return {key:parts[0]&&parts[1]?parts[0]+'/'+parts[1]:null,tab:parts[2]||'',params:new URLSearchParams(qs||'')}}
+function go(key,tab,params){location.hash=key+(tab?'/'+tab:'')+(params?'?'+params:'')}
+window.addEventListener('hashchange',route);
+function route(){
+  const {key,tab,params}=parseHash();
+  if(!key||!O[key]){CUR=null;renderList();renderOverview(key);return}
+  if(key!==CUR){SF=''}
+  CUR=key;const o=O[key];TAB=tab||(o.v?'werte':'struktur');
+  const f=params.get('f'),v=params.get('v');
+  if(f){const parts=f.split('.');const exp=expOf(key);for(let i=1;i<parts.length;i++)exp.add(parts.slice(0,i).join('.'));SF=''}
+  renderList();renderDetail();
+  if(f||v)setTimeout(()=>{const row=document.querySelector(`tr[data-path="${CSS.escape(f||v)}"]`);if(row){row.scrollIntoView({block:'center'});row.classList.add('flash')}},30);
+  else if(RENDERED_KEY!==key)$('#detail').scrollTop=0;
+  RENDERED_KEY=key;
+}
+
+// ---------- Übersicht ----------
+function renderOverview(bad){
+  const c=k=>Object.values(O).filter(o=>o.k===k).length,s=D.src;
+  const pr=D.problems||[];
+  $('#detail').innerHTML=`<div class="ov">
+  ${bad?`<p class="miss">Objekt „${esc(bad)}“ gibt es im Schema nicht.</p>`:''}
+  <h2>BO4E-Schema</h2>
+  <div class="sub">${s.art==='lokal'?'lokale Kopie '+esc(s.pfad):`GitHub ${esc(s.repo)}@${esc(s.ref)} · Commit <span class="mono">${esc(s.sha.slice(0,12))}</span> vom ${fmtDate(s.commit_date)} · ${esc(s.commit_message)}`}</div>
+  ${s.hinweis?`<p class="miss">⚠ ${esc(s.hinweis)}</p>`:''}
+  <div class="cards">${KINDS.map(k=>`<div class="card"><b class="k-${k}">${c(k)}</b>${KL[k]}</div>`).join('')}
+    <div class="card"><b>${Object.keys(D.examples||{}).length}</b>Beispiele</div><div class="card"><b>${Object.keys(TR).length}</b>Übersetzungen DE→EN</div></div>
+  <h3>Bedienung</h3>
+  <ul>
+   <li><b>Suche oben</b> (Taste <kbd>/</kbd>): findet Objekte, Felder, Enum-Werte und Beschreibungen in allen Objekten. <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd>.</li>
+   <li><b>Struktur</b>: ▸ klappt verschachtelte BO/COM direkt in der Tabelle auf. „+1 Ebene“ klappt alle sichtbaren eine Ebene weiter auf.</li>
+   <li><b>In Struktur suchen</b>: durchsucht den ganzen Baum (bis ${MAXD} Ebenen) und zeigt nur Treffer mit ihrem Pfad.</li>
+   <li><b>⧉</b> kopiert den Feldpfad (z. B. <code>lokationsadresse.postleitzahl</code>, Listen mit <code>[]</code>), mit <kbd>Shift</kbd> inkl. Objektname.</li>
+   <li><b>DE/EN</b> schaltet die Bezeichner auf Englisch (translation/v1/DE_to_EN.yaml) um; die andere Sprache steht im Tooltip bzw. darunter.</li>
+   <li>Jede Ansicht hat eine eigene Adresse (z. B. <code>#bo/Marktlokation?f=lokationsadresse.postleitzahl</code>) – Lesezeichen und Browser-Zurück funktionieren.</li>
+  </ul>
+  ${pr.length?`<h3>Auffälligkeiten im Schema (${pr.length})</h3><ul>${pr.map(p=>`<li class="mono">${esc(p)}</li>`).join('')}</ul>`:''}
+  <p class="hint">Neu erzeugen: <code>aktualisieren.bat</code> im Tool-Ordner (holt den aktuellen Stand von GitHub). Viewer erzeugt ${fmtDate(s.built_at)}.</p>
+  </div>`;
+}
+
+// ---------- Detail ----------
+function renderDetail(){
+  const key=CUR,o=O[key],isEnum=!!o.v;const used=USED[key]||[];
+  const ex=(D.examples||{})[key],raw=(D.raw||{})[key];
+  const tabs=[[isEnum?'werte':'struktur',isEnum?`Werte (${o.v.length})`:`Struktur (${(o.p||[]).length})`,true],
+    ['beispiel','Beispiel',!!ex],['roh','Roh-JSON',!!raw],['verwendung',`Verwendet in (${used.length})`,true]];
+  const xd=o.xd&&o.xd.EN&&LANG==='en'?`<div class="desc hint">EN: ${esc(o.xd.EN)}</div>`:'';
+  const req=(o.p||[]).filter(p=>p.req).map(p=>p.n);
+  let h=`<h2><span class="tag k-${o.k}">${o.k}</span> ${nmAlt(o.n).replace('<span class="alt">','<span class="alt">· ')}</h2>
+   <div class="sub mono">schemas/v1/${esc(key)}.schema.json${req.length?` · Pflicht: ${req.map(esc).join(', ')}`:''}</div>
+   ${o.d&&o.d!==o.n?`<div class="desc">${esc(o.d)}</div>`:''}${xd}
+   <nav class="tabs">${tabs.map(([id,l,en])=>`<a href="#${esc(key)}/${id}" class="${TAB===id?'on':''}${en?'':' dis'}">${l}</a>`).join('')}</nav><div id="pane"></div>`;
+  $('#detail').innerHTML=h;
+  const pane=$('#pane');
+  if(TAB==='struktur'&&!isEnum)renderStruct(pane);
+  else if(TAB==='werte'&&isEnum)renderEnum(pane);
+  else if(TAB==='beispiel')pane.innerHTML=ex?jsonBlock(ex,key,'Beispiel aus docs/examples'):'<div class="empty">Kein Beispiel vorhanden.</div>';
+  else if(TAB==='roh')pane.innerHTML=raw?jsonBlock(raw,key,'Original-Schema'):'';
+  else if(TAB==='verwendung')renderUsed(pane);
+  else if(isEnum)renderEnum(pane);else renderStruct(pane);
+}
+
+function renderStruct(pane){
+  const key=CUR,o=O[key];
+  if(!o.p||!o.p.length){pane.innerHTML='<div class="empty">Dieses Objekt hat keine Felder.</div>';return}
+  const q=SF.trim().toLowerCase();
+  let rows,info='';
+  if(q){const r=filterRows(key,q);rows=r.rows;info=`${r.hits} Treffer im Baum`+(r.cut?' (Suche nach '+LIMIT+' Knoten abgebrochen)':'')}
+  else rows=buildRows(key);
+  const n=rows.length;
+  pane.innerHTML=`<div class="bar">
+    <input type="search" id="sf" placeholder="In Struktur suchen (alle Ebenen) …" value="${esc(SF)}" autocomplete="off">
+    <button id="exp1" title="Alle sichtbaren Objekte eine Ebene weiter aufklappen" ${q?'disabled':''}>+1 Ebene</button>
+    <button id="col" ${q?'disabled':''}>Alle zuklappen</button>
+    <label class="hint" title="Testdaten-Hinweise (faker) in der Beschreibung anzeigen"><input type="checkbox" id="fk" ${FAKER?'checked':''}> faker</label>
+    <span class="hint">${q?info:`${o.p.length} Felder${n>o.p.length?` · ${n} Zeilen aufgeklappt`:''}`}</span></div>
+   <table><thead><tr><th>Feld</th><th>Typ</th><th title="Liste (Array)">Liste</th><th title="Pflichtfeld (required)">Pflicht</th><th>Beschreibung</th><th></th></tr></thead>
+   <tbody>${rows.map(r=>rowHtml(r,q)).join('')}</tbody></table>
+   ${q&&!rows.length?'<div class="empty">Keine Treffer.</div>':''}`;
+  const sf=$('#sf');sf.oninput=()=>{SF=sf.value;const pos=sf.selectionStart;renderStruct(pane);const s2=$('#sf');s2.focus();s2.setSelectionRange(pos,pos)};
+  $('#exp1').onclick=()=>{const exp=expOf(key);for(const r of buildRows(key))if(r.can&&!r.open)exp.add(r.path);renderStruct(pane)};
+  $('#col').onclick=()=>{expOf(key).clear();renderStruct(pane)};
+  $('#fk').onchange=e=>{FAKER=e.target.checked;LS.set('bo4e-viewer-faker',FAKER?'1':'');const y=$('#detail').scrollTop;renderStruct(pane);$('#detail').scrollTop=y};
+}
+function rowHtml(r,q){
+  const p=r.p,t=p.t;
+  const tg=r.can?(q?`<span class="tgs"></span>`:`<button class="tg" data-tg="${esc(r.path)}" title="${r.open?'zuklappen':'aufklappen'}">${r.open?'▾':'▸'}</button>`):'<span class="tgs"></span>';
+  const chips=[];
+  if(p.c)chips.push(`<span class="chip" title="$comment">${mk(p.c,q)}</span>`);
+  if(p.def!==undefined)chips.push(`<span class="chip" title="default">Standard: ${esc(JSON.stringify(p.def))}</span>`);
+  if(p.fk&&FAKER)chips.push(`<span class="chip" title="faker (Testdaten)">faker ${esc(JSON.stringify(p.fk))}</span>`);
+  const xd=p.xd&&p.xd.EN&&LANG==='en'?`<div class="hint">EN: ${esc(p.xd.EN)}</div>`:'';
+  const d=p.d&&p.d!==p.n?mk(p.d.replace(/\s*\n\s*/g,' '),q):'';
+  return `<tr class="d${Math.min(r.depth,8)}${r.ctx?' ctx':''}" data-path="${esc(r.path)}">
+   <td class="n" style="padding-left:${6+r.depth*20}px">${tg}${nm(p.n,q)}</td>
+   <td class="t">${typeHtml(t,q)}${r.cyc?'<span class="cyc" title="Verweist auf ein Objekt, das in diesem Pfad schon vorkommt">↻ rekursiv</span>':''}</td>
+   <td class="l">${t.arr?'[ ]':''}</td><td class="r">${p.req?'●':''}</td>
+   <td>${d}${xd}${chips.length?'<div>'+chips.join('')+'</div>':''}</td>
+   <td class="a"><button data-cp="${esc(r.cp)}" title="Pfad kopieren: ${esc(r.cp)}\n(Shift: mit Objektname)">⧉</button></td></tr>`;
+}
+$('#detail').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.tg!==undefined){const exp=expOf(CUR),p=b.dataset.tg;
+    if(exp.has(p)){for(const x of [...exp])if(x===p||x.startsWith(p+'.'))exp.delete(x)}else exp.add(p);
+    const y=$('#detail').scrollTop;renderStruct($('#pane'));$('#detail').scrollTop=y;
+    const btn=document.querySelector(`button[data-tg="${CSS.escape(p)}"]`);if(btn)btn.focus()}
+  else if(b.dataset.cp!==undefined)copy(e.shiftKey?lab(nameOf(CUR))+'.'+b.dataset.cp:b.dataset.cp);
+  else if(b.dataset.copyjson!==undefined){const k=b.dataset.copyjson;copy(TAB==='beispiel'?D.examples[k]:D.raw[k])}
+});
+
+function renderEnum(pane){
+  const o=O[CUR],q=SF.trim().toLowerCase();const {params}=parseHash();
+  const vals=o.v.filter(v=>!q||v.toLowerCase().includes(q)||tr(v).toLowerCase().includes(q));
+  const anyEn=o.v.some(v=>tr(v)!==v);
+  pane.innerHTML=`<div class="bar"><input type="search" id="sf" placeholder="Werte filtern …" value="${esc(SF)}" autocomplete="off">
+    <button id="cpv" title="Alle Werte kopieren (eine Zeile je Wert)">Werte kopieren</button><span class="hint">${vals.length} von ${o.v.length} Werten</span></div>
+    <table style="max-width:900px"><thead><tr><th style="width:44px">#</th><th>Wert</th>${anyEn?`<th>${LANG==='en'?'Deutsch':'Englisch'}</th>`:''}<th></th></tr></thead><tbody>
+    ${vals.map(v=>`<tr data-path="${esc(v)}"><td class="hint">${o.v.indexOf(v)+1}</td><td class="v">${mk(lab(v),q)}</td>${anyEn?`<td class="v" style="font-weight:400">${(LANG==='en'?v:tr(v))!==lab(v)?mk(LANG==='en'?v:tr(v),q):''}</td>`:''}
+      <td class="a"><button data-cp="${esc(lab(v))}" title="Wert kopieren">⧉</button></td></tr>`).join('')}</tbody></table>`;
+  const sf=$('#sf');sf.oninput=()=>{SF=sf.value;const pos=sf.selectionStart;renderEnum(pane);const s2=$('#sf');s2.focus();s2.setSelectionRange(pos,pos)};
+  $('#cpv').onclick=()=>copy(vals.map(lab).join('\n'));
+}
+
+function renderUsed(pane){
+  const key=CUR,used=(USED[key]||[]).slice().sort((a,b)=>a.from.localeCompare(b.from));
+  let h='<div class="used">';
+  if(!used.length)h+='<div class="empty">Dieses Objekt wird von keinem anderen Objekt verwendet.</div>';
+  else{h+=`<h3>Direkt verwendet in (${used.length} Felder)</h3><table><thead><tr><th>Objekt</th><th>Feld</th><th>Liste</th></tr></thead><tbody>`+
+    used.map(u=>`<tr><td><span class="tag k-${kindOf(u.from)}">${kindOf(u.from)}</span> <a href="#${esc(u.from)}">${nm(nameOf(u.from))}</a></td>
+      <td class="n"><a href="#${esc(u.from)}?f=${encodeURIComponent(u.field)}">${nm(u.field)}</a></td><td class="l">${u.arr?'[ ]':''}</td></tr>`).join('')+'</tbody></table>'}
+  if(O[key].k!=='bo'){const ind=indirectBO(key);
+    if(ind.length)h+=`<h3>Indirekt enthalten in BO (${ind.length})</h3><p class="hint">Kürzester Pfad vom Business-Objekt bis hierher.</p><table><thead><tr><th>BO</th><th>Pfad</th></tr></thead><tbody>`+
+      ind.map(x=>`<tr><td><a href="#${esc(x.bo)}">${nm(nameOf(x.bo))}</a></td><td class="n"><a href="#${esc(x.bo)}?f=${encodeURIComponent(x.path)}">${esc(x.path.split('.').map(lab).join('.'))}</a></td></tr>`).join('')+'</tbody></table>'}
+  pane.innerHTML=h+'</div>';
+}
+
+// ---------- JSON-Anzeige ----------
+const REFRE=/^(?:\.\.\/(bo|com|enum|cdoc)\/)?([A-Za-z0-9_]+)\.schema\.json$/;
+function jsonBlock(text,key,title){
+  const own=kindOf(key);let out='',last=0;const re=/("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;let m;
+  while((m=re.exec(text))){out+=esc(text.slice(last,m.index));last=re.lastIndex;
+    if(m[1]){if(m[2]){out+=`<span class="j-k">${esc(m[1])}</span>${m[2]}`}
+      else{const s=m[1].slice(1,-1),rm=REFRE.exec(s);
+        if(rm&&TAB==='roh'){const r=(rm[1]||own)+'/'+rm[2];out+=O[r]?`<a class="j-s" href="#${esc(r)}">${esc(m[1])}</a>`:`<span class="j-s miss">${esc(m[1])}</span>`}
+        else out+=`<span class="j-s">${esc(m[1])}</span>`}}
+    else if(m[3])out+=`<span class="j-l">${m[0]}</span>`;else out+=`<span class="j-n">${m[0]}</span>`}
+  out+=esc(text.slice(last));
+  return `<div class="bar"><span class="hint">${esc(title)}</span><button data-copyjson="${esc(key)}">JSON kopieren</button></div><pre class="json">${out}</pre>`}
+
+// ---------- Globale Suche ----------
+let GS=[],GSI=-1;
+function gsearch(){
+  const raw=$('#gs').value.trim(),q=raw.toLowerCase(),box=$('#gsr');
+  if(!q){box.classList.remove('show');GS=[];return}
+  const L=s=>String(s||'').toLowerCase();
+  const score=(...c)=>{let b=9;for(const s of c){const x=L(s);if(x===q)b=Math.min(b,0);else if(x.startsWith(q))b=Math.min(b,1);else if(x.includes(q))b=Math.min(b,2)}return b};
+  const objs=[],fields=[],vals=[],descs=[];
+  for(const [k,o] of Object.entries(O)){
+    let s=score(o.n,tr(o.n));if(s<9)objs.push({s,k,label:nm(o.n,q),sub:KL[o.k].split(' – ')[1],href:'#'+k,kind:o.k});
+    if(q.length>=3&&L(o.d).includes(q)&&s===9)descs.push({s:3,k,label:nm(o.n),sub:o.d,href:'#'+k,kind:o.k});
+    for(const p of o.p||[]){s=score(p.n,tr(p.n));
+      if(s<9)fields.push({s,k,label:`<span class="mono">${nm(o.n)}.<b>${nm(p.n,q)}</b></span>`,sub:p.t.ref?nameOf(p.t.ref):p.t.b,href:`#${k}?f=${encodeURIComponent(p.n)}`,kind:o.k});
+      else if(q.length>=3&&(L(p.d).includes(q)||L(p.c).includes(q)))descs.push({s:3,k,label:`<span class="mono">${nm(o.n)}.${nm(p.n)}</span>`,sub:p.c&&L(p.c).includes(q)?p.c:p.d,href:`#${k}?f=${encodeURIComponent(p.n)}`,kind:o.k})}
+    for(const v of o.v||[]){s=score(v,tr(v));if(s<9)vals.push({s,k,label:`<span class="mono">${nm(o.n)} · <b>${mk(lab(v),q)}</b></span>`,sub:LANG==='en'?v:(tr(v)!==v?tr(v):''),href:`#${k}/werte?v=${encodeURIComponent(v)}`,kind:o.k})}}
+  const sort=a=>a.sort((x,y)=>x.s-y.s||x.k.localeCompare(y.k));
+  const groups=[['Objekte',sort(objs)],['Felder',sort(fields)],['Enum-Werte',sort(vals)],['Beschreibungen / Kommentare',sort(descs)]];
+  let h='';GS=[];const MAX=40;
+  for(const [g,arr] of groups){if(!arr.length)continue;h+=`<div class="grp">${g} (${arr.length})</div>`;
+    for(const r of arr.slice(0,MAX)){const i=GS.push(r)-1;h+=`<div class="r" data-i="${i}"><span class="tag k-${r.kind}">${r.kind}</span><span>${r.label}</span><span class="sub">${q.length>=3&&g.startsWith('Beschr')?mk(String(r.sub||'').replace(/\s+/g,' ').slice(0,140),q):esc(r.sub||'')}</span></div>`}
+    if(arr.length>MAX)h+=`<div class="more">… ${arr.length-MAX} weitere – Suchbegriff verfeinern</div>`}
+  box.innerHTML=h||'<div class="none">Keine Treffer.</div>';box.classList.add('show');GSI=GS.length?0:-1;markGS();
+}
+function markGS(){document.querySelectorAll('#gsr .r').forEach(e=>e.classList.toggle('on',+e.dataset.i===GSI));const on=$('#gsr .r.on');if(on)on.scrollIntoView({block:'nearest'})}
+function pickGS(i){const r=GS[i];if(!r)return;$('#gsr').classList.remove('show');
+  if(location.hash===r.href)route();else location.hash=r.href.slice(1)}
+let gst;$('#gs').addEventListener('input',()=>{clearTimeout(gst);gst=setTimeout(gsearch,110)});
+$('#gs').addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){e.preventDefault();if(GS.length){GSI=(GSI+1)%GS.length;markGS()}}
+  else if(e.key==='ArrowUp'){e.preventDefault();if(GS.length){GSI=(GSI-1+GS.length)%GS.length;markGS()}}
+  else if(e.key==='Enter'){e.preventDefault();pickGS(GSI)}
+  else if(e.key==='Escape'){$('#gsr').classList.remove('show');$('#gs').blur()}});
+$('#gs').addEventListener('focus',()=>{if($('#gs').value.trim())gsearch()});
+$('#gsr').addEventListener('mousedown',e=>{const r=e.target.closest('.r');if(r){e.preventDefault();pickGS(+r.dataset.i)}});
+document.addEventListener('click',e=>{if(!e.target.closest('.gsw'))$('#gsr').classList.remove('show')});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();$('#gs').focus();$('#gs').select()}});
+
+setLang(LANG);
+</script>
+</body>
+</html>

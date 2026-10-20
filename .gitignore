@@ -1,0 +1,10 @@
+# erzeugt bzw. geladen von build_viewer.py
+cache/
+output/
+*.tmp
+
+# lokale Einstellungen (kann einen Token enthalten)
+settings.json
+
+__pycache__/
+*.pyc
