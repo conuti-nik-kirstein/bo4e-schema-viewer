@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """BO4E-Schema-Viewer – erzeugt eine eigenständige HTML-Datei aus conuti-gmbh/bo4e-schema.
 
-Quelle (Standard): GitHub conuti-gmbh/bo4e-schema@master.
+Quelle: ausschließlich GitHub (Standard conuti-gmbh/bo4e-schema@master).
   - Der aktuelle Commit wird über die GitHub-API geprüft; nur bei neuem Commit wird das Archiv geladen
     (schemas/, translation/, docs/examples/) und unter cache/<sha>/ abgelegt.
-  - Ohne Verbindung: letzter Cache-Stand, sonst eine lokale Kopie (MACOAPP/bo4e-schema-master oder
-    ../bo4e-schema bzw. ../bo4e-schema-master neben diesem Ordner, oder settings.json "bo4e_local_path").
+  - Ohne Verbindung wird der zuletzt geladene Stand aus cache/ verwendet.
 Token ist optional (Repo öffentlich), hilft aber gegen das Rate-Limit (60 Abfragen/h anonym):
   BO4E_GITHUB_TOKEN, GITHUB_TOKEN, GH_TOKEN, settings.json "github_token" oder `gh auth token`.
 
 Aufruf:
-  python build_viewer.py                 # GitHub (Fallback Cache / lokal)
-  python build_viewer.py --quelle lokal  # nur lokale Kopie
-  python build_viewer.py --ref <branch|tag|commit> --out <datei.html>
+  python build_viewer.py                                # aktueller Stand von master
+  python build_viewer.py --ref <branch|tag|commit>      # bestimmter Stand
+  python build_viewer.py --out <datei.html>
 
 Nur Python-Standardbibliothek.
 """
@@ -35,19 +34,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-MACOAPP = HERE.parent.parent  # wenn das Tool unter MACOAPP/Tools/<Tool> liegt
-
-
-def default_local() -> Path:
-    """Lokale Kopie des Schema-Repos: neben MACOAPP/Tools oder neben diesem Repo (z. B. Github-Repos/bo4e-schema)."""
-    candidates = (MACOAPP / "bo4e-schema-master", HERE.parent / "bo4e-schema", HERE.parent / "bo4e-schema-master")
-    for p in candidates:
-        if (p / "schemas" / "v1").exists():
-            return p
-    return candidates[0]
-
-
-DEFAULT_LOCAL = default_local()
 CACHE = HERE / "cache"
 TEMPLATE = HERE / "template.html"
 LOGO = HERE / "conuti-logo.png"
@@ -152,21 +138,11 @@ def cache_current() -> dict | None:
 
 
 def resolve_source(args, settings) -> tuple[Path, dict]:
-    """Liefert (Wurzelordner mit schemas/v1, Quell-Info)."""
-    local = Path(args.lokal or settings.get("bo4e_local_path") or DEFAULT_LOCAL)
-    quelle = args.quelle or settings.get("quelle") or "github"
+    """Liefert (Wurzelordner mit schemas/v1, Quell-Info). Quelle ist immer GitHub bzw. dessen Cache."""
     repo = args.repo or settings.get("bo4e_repo") or "conuti-gmbh/bo4e-schema"
     ref = args.ref or settings.get("bo4e_ref") or "master"
 
-    def local_info(hinweis=""):
-        if not (local / "schemas" / "v1").exists():
-            sys.exit(f"FEHLER: lokale Kopie nicht gefunden: {local}")
-        return local, {"art": "lokal", "pfad": str(local), "hinweis": hinweis}
-
-    if quelle == "lokal":
-        return local_info()
-
-    gh = GitHub(repo, ref, find_token(settings))
+    gh =GitHub(repo, ref, find_token(settings))
     try:
         log(f"Prüfe GitHub {repo}@{ref} …")
         latest = gh.latest()
@@ -200,8 +176,8 @@ def resolve_source(args, settings) -> tuple[Path, dict]:
             return CACHE / cur["dir"], {"art": "cache", **{k: cur[k] for k in (
                 "repo", "ref", "sha", "commit_date", "commit_message", "fetched_at")},
                 "hinweis": f"GitHub nicht erreichbar ({msg}) – letzter geladener Stand"}
-        log(f"→ verwende lokale Kopie {local}")
-        return local_info(f"GitHub nicht erreichbar ({msg}) – lokale Kopie")
+        sys.exit("FEHLER: GitHub nicht erreichbar und noch kein Stand im Cache – "
+                 "beim ersten Lauf wird eine Internetverbindung benötigt.")
 
 
 # ----------------------------------------------------------------------------- Schema lesen
@@ -350,11 +326,9 @@ def build_html(data: dict, out: Path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="BO4E-Schema-Viewer erzeugen")
-    ap.add_argument("--quelle", choices=("github", "lokal"))
-    ap.add_argument("--repo")
+    ap = argparse.ArgumentParser(description="BO4E-Schema-Viewer erzeugen (Quelle: GitHub)")
+    ap.add_argument("--repo", help="GitHub-Repo (Standard conuti-gmbh/bo4e-schema)")
     ap.add_argument("--ref", help="Branch, Tag oder Commit (Standard master)")
-    ap.add_argument("--lokal", help=f"Pfad der lokalen Kopie (Standard {DEFAULT_LOCAL})")
     ap.add_argument("--out", help=f"Ausgabedatei (Standard {DEFAULT_OUT.relative_to(HERE)})")
     args = ap.parse_args()
     settings = load_settings()

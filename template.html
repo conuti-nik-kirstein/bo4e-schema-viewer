@@ -182,10 +182,9 @@ function fwdPath(from,target,seen){ // Kette from -> ... -> target aus seen (see
 // ---------- Quelle ----------
 function fmtDate(s){if(!s)return'';const d=new Date(s);return isNaN(d)?s:d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}
 (function(){const s=D.src,e=$('#src');
-  if(s.art==='lokal'){e.innerHTML=`Schema: <b>lokale Kopie</b> · erzeugt ${fmtDate(s.built_at)}`;e.title=s.pfad+(s.hinweis?'\n'+s.hinweis:'')}
-  else{e.innerHTML=`Schema: <b>${esc(s.repo)}@${esc(s.ref)}</b> · <span class="mono">${esc(s.sha.slice(0,7))}</span> vom ${fmtDate(s.commit_date)}`;
-    e.title=`Commit: ${s.sha}\n${s.commit_message}\nGeladen: ${fmtDate(s.fetched_at)}\nViewer erzeugt: ${fmtDate(s.built_at)}`+(s.hinweis?'\n'+s.hinweis:'')}
-  if(s.hinweis)e.classList.add('warn'),e.innerHTML+=' · ⚠ '+(s.art==='cache'?'Cache-Stand':'GitHub nicht erreichbar');})();
+  e.innerHTML=`Schema: <b>${esc(s.repo)}@${esc(s.ref)}</b> · <span class="mono">${esc(s.sha.slice(0,7))}</span> vom ${fmtDate(s.commit_date)}`;
+  e.title=`Commit: ${s.sha}\n${s.commit_message}\nGeladen: ${fmtDate(s.fetched_at)}\nViewer erzeugt: ${fmtDate(s.built_at)}`+(s.hinweis?'\n'+s.hinweis:'');
+  if(s.hinweis)e.classList.add('warn'),e.innerHTML+=' · ⚠ Cache-Stand';})();
 
 // ---------- Sprache / Design ----------
 function setLang(l){LANG=l;LS.set('bo4e-viewer-lang',l);$('#lDE').classList.toggle('on',l==='de');$('#lEN').classList.toggle('on',l==='en');renderList();route();if($('#gs').value)gsearch()}
@@ -276,7 +275,7 @@ function renderOverview(bad){
   $('#detail').innerHTML=`<div class="ov">
   ${bad?`<p class="miss">Objekt „${esc(bad)}“ gibt es im Schema nicht.</p>`:''}
   <h2>BO4E-Schema</h2>
-  <div class="sub">${s.art==='lokal'?'lokale Kopie '+esc(s.pfad):`GitHub ${esc(s.repo)}@${esc(s.ref)} · Commit <span class="mono">${esc(s.sha.slice(0,12))}</span> vom ${fmtDate(s.commit_date)} · ${esc(s.commit_message)}`}</div>
+  <div class="sub">GitHub ${esc(s.repo)}@${esc(s.ref)} · Commit <span class="mono">${esc(s.sha.slice(0,12))}</span> vom ${fmtDate(s.commit_date)} · ${esc(s.commit_message)}</div>
   ${s.hinweis?`<p class="miss">⚠ ${esc(s.hinweis)}</p>`:''}
   <div class="cards">${KINDS.map(k=>`<div class="card"><b class="k-${k}">${c(k)}</b>${KL[k]}</div>`).join('')}
     <div class="card"><b>${Object.keys(D.examples||{}).length}</b>Beispiele</div><div class="card"><b>${Object.keys(TR).length}</b>Übersetzungen DE→EN</div></div>

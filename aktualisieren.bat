@@ -1,6 +1,6 @@
 @echo off
 rem BO4E-Schema-Viewer neu erzeugen (aktueller Stand von GitHub) und im Browser oeffnen.
-rem Parameter werden durchgereicht, z. B.:  aktualisieren.bat --quelle lokal
+rem Parameter werden durchgereicht, z. B.:  aktualisieren.bat --ref <Branch|Tag|Commit>
 setlocal
 cd /d "%~dp0"
 set "PY=python"
